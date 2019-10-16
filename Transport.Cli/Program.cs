@@ -33,6 +33,9 @@ namespace Transport.Cli
             {
                 Console.WriteLine(file);
                 var txc = new TXCParser(file);
+                var newFile = Path.ChangeExtension(file, "csv");
+                txc.SaveCsv(newFile);
+
             }, degreeParallelism);
 
             if (Directory.Exists(path))

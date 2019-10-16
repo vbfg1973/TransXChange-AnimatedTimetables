@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Xml;
 using System.Xml.Serialization;
+using CsvHelper;
 using Transport.TransXChange.Xml;
 
 namespace Transport.TransXChange
@@ -24,7 +26,18 @@ namespace Transport.TransXChange
             ParseXML();
         }
 
-        private void ParseXML()
+        public void SaveCsv(string path)
+        {
+            using (var writer = new StreamWriter(path))
+            {
+                using (var csv = new CsvWriter(writer))
+                {
+                    csv.WriteRecords(this.ParseXML());
+                }
+            }
+        }
+
+        private IEnumerable<JourneyLink> ParseXML()
         {
             XmlReaderSettings settings = new XmlReaderSettings();
             settings.ConformanceLevel = ConformanceLevel.Fragment;
@@ -134,17 +147,21 @@ namespace Transport.TransXChange
                                     }
                                 }
 
-                                Console.WriteLine($"{service.ServiceCode}\t{journeyPattern.id}\t{(timeDeparture + timeDelta).TimeOfDay}\t{(timeDeparture + timeDelta + timeWaitFrom).TimeOfDay}\t{timingLink.id}\t{timingLink.From.StopPointRef.Value}\t{timingLink.To.StopPointRef.Value}\t{timeRun}\t{timeWaitFrom}\t{timeWaitTo}");
+                                //Console.WriteLine($"{service.ServiceCode}\t{journeyPattern.id}\t{(timeDeparture + timeDelta).TimeOfDay}\t{(timeDeparture + timeDelta + timeWaitFrom).TimeOfDay}\t{timingLink.id}\t{timingLink.From.StopPointRef.Value}\t{timingLink.To.StopPointRef.Value}\t{timeRun}\t{timeWaitFrom}\t{timeWaitTo}");
+                                var journeyLink = new JourneyLink(
+                                    serviceCode: service.ServiceCode,
+                                    journeyPatternId: journeyPattern.id,
+                                    arrive: (timeDeparture + timeDelta).TimeOfDay,
+                                    depart: (timeDeparture + timeDelta + timeWaitFrom).TimeOfDay,
+                                    fromStop: timingLink.From.StopPointRef.Value,
+                                    toStop: timingLink.To.StopPointRef.Value,
+                                    duration: timeRun);
 
-                                //Console.WriteLine(jpId + "Arrive: " + (timeDeparture + timeDelta).TimeOfDay + " Depart: " + (timeDeparture + timeDelta + timeWaitFrom).TimeOfDay
-                                //                                   + " " + timingLink.id + " " + timingLink.From.StopPointRef.Value + " " + timingLink.To.StopPointRef.Value
-                                //                                   + " Runtime=" + timeRun + " FromWaitTime=" + timeWaitFrom + " ToWaitTime=" + timeWaitTo);
+                                yield return journeyLink;
 
                                 timeDelta = timeDelta + timeWaitFrom + timeRun;
                             }
                         }
-
-                        //Console.WriteLine();
                     }
                 }
             }
