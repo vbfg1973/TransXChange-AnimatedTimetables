@@ -45,4 +45,3 @@ RUN apt update \
         libcgal12 \
  && apt autoremove -y \
  && rm -rf /var/lib/apt/lists/*
-
