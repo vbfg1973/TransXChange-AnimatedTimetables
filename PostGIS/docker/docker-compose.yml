@@ -4,6 +4,7 @@ services:
     image: pgrouting/pgrouting:v2.6.3-postgresql_11
     ports:
       - "5432:5432"
+    shm_size: '1gb'
     volumes:
       - db-data:/var/lib/postgresql/data
     environment:
