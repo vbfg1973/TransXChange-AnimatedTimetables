@@ -12,5 +12,5 @@ ls $SRCDIR/*Node.shp | parallel shp2pgsql -S -a -s 27700 {} public.roadnodes > $
 psql -U $PGUSER -h $PGHOST -p $PGPORT < $SQLDIR/header.sql
 psql -U $PGUSER -h $PGHOST -p $PGPORT gis < $TMPDIR/roadlinks.sql
 psql -U $PGUSER -h $PGHOST -p $PGPORT gis < $TMPDIR/roadnodes.sql
-psql -U $PGUSER -h $PGHOST -p $PGPORT < $SQLDIR/pgrouting-openroads.sql
+psql -U $PGUSER -h $PGHOST -p $PGPORT gis < $SQLDIR/pgrouting-openroads.sql
 
