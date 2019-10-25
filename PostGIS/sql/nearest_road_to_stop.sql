@@ -16,7 +16,7 @@ SELECT n.id, ST_Split(n.geom, ST_ClosestPoint(n.geom,ST_Buffer(p.geom, 100))) AS
     FROM roadlinks n, candidatestops p WHERE geom is not null
 
 CREATE TABLE splitroads AS
-SELECT stop_id, road_id, ST_Split(road_geom, ST_ClosestPoint(road_geom, stop_geom)) AS geom
+SELECT stop_id, road_id, ST_CollectionExtract(ST_Split(road_geom, ST_ClosestPoint(road_geom, stop_geom)), 2) AS geom
   FROM (
     SELECT DISTINCT ON (p.gid)
 	  	   p.gid AS stop_id,
