@@ -1,7 +1,7 @@
 SELECT AddGeometryColumn('public', 'roadlinks', 'geom2d', 27700, LINESTRING, 2);
 UPDATE roadlinks SET geom2d = ST_Force2d(geom);
 CREATE INDEX roadlinks_geom2d_idx ON public.roadlinks USING gist (geom2d);
-CLUSTER public.roadlinks using roadlinks_geom2d_idx;
+CLUSTER public.roadlinks using roadlinks_geom_idx;
 
 CREATE TABLE splitroads AS
 SELECT stop_id, road_id, ST_CollectionExtract(ST_Split(road_geom, ST_ClosestPoint(road_geom, stop_geom)), 2) AS geom
