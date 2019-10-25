@@ -75,3 +75,14 @@ WHERE cs.road_id = rl.gid;
 -- But it don't fucking work cos it ain't breaking the lines at the stops near me, cos the below nodes aren't being created at those points:
 
 CREATE TABLE newnodes AS SELECT road_id, id, (geom).geom FROM (SELECT id AS road_id, ROW_NUMBER() OVER (order by id) AS id, ST_DUMPPOINTS(geom) AS geom FROM roadlinks) AS foo;
+
+SELECT (ST_Dump(ST_Split(N, P))).geom AS geom
+FROM (SELECT
+  rl.geom as N,
+  cs.geom as P
+  FROM roadlinks AS rl, candidatestops AS cs) AS foo;
+
+
+-- Might work, might not. Sure as shit needs to be faster though. JFC!
+SELECT n.id, ST_Split(n.geom, ST_ClosestPoint(n.geom,ST_Buffer(p.geom. 100))) AS geom
+    FROM roadlinks n, candidatestops p WHERE geom is not null
