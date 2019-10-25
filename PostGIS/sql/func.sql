@@ -84,5 +84,6 @@ FROM (SELECT
 
 
 -- Might work, might not. Sure as shit needs to be faster though. JFC!
-SELECT n.id, ST_Split(n.geom, ST_ClosestPoint(n.geom,ST_Buffer(p.geom. 100))) AS geom
+-- Is it splitting each line at the nearest point to each point?
+SELECT n.id, ST_Split(n.geom, ST_ClosestPoint(n.geom,ST_Buffer(p.geom, 100))) AS geom
     FROM roadlinks n, candidatestops p WHERE geom is not null
