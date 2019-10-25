@@ -17,14 +17,16 @@ SELECT n.id, ST_Split(n.geom, ST_ClosestPoint(n.geom,ST_Buffer(p.geom, 100))) AS
 
 CREATE TABLE splitroads AS
 SELECT stop_id, road_id, ST_Split(road_geom, ST_ClosestPoint(road_geom, stop_geom)) AS geom
-  FROM (SELECT DISTINCT ON (p.gid)
-		p.gid AS stop_id,
-		p.atcocode AS atcocode,
-		r.gid AS road_id,
-		ST_Distance(p.geom, r.geom) AS distance,
-		p.geom AS stop_geom,
-		r.geom AS road_geom
-		FROM stops p
-			LEFT JOIN roadlinks r ON ST_DWithin(p.geom, r.geom, 30)
-		ORDER BY stop_id, distance, road_id) AS foo
+  FROM (
+    SELECT DISTINCT ON (p.gid)
+	  	   p.gid AS stop_id,
+		   p.atcocode AS atcocode,
+		   r.gid AS road_id,
+		   ST_Distance(p.geom, r.geom) AS distance,
+		   p.geom AS stop_geom,
+		   r.geom AS road_geom
+	  FROM stops p
+ LEFT JOIN roadlinks r ON ST_DWithin(p.geom, r.geom, 30)
+  ORDER BY stop_id, distance, road_id
+  ) AS foo
 WHERE road_id IS NOT NULL;
