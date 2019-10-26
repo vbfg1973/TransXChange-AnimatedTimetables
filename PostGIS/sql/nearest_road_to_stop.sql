@@ -75,6 +75,7 @@ CREATE INDEX ON newroadnodes USING BTREE(id);
 ALTER TABLE newroadlinks ADD COLUMN start_id INTEGER;
 ALTER TABLE newroadlinks ADD COLUMN end_id INTEGER;
 
+-- These are ridculously slow!
 UPDATE newroadlinks AS a SET start_id = b.id FROM newroadnodes AS b WHERE ST_StartPoint(a.geom) = b.geom;
 UPDATE newroadlinks AS a SET end_id = b.id FROM newroadnodes AS b WHERE ST_EndPoint(a.geom) = b.geom;
 
