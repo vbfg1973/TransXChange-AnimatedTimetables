@@ -3,33 +3,66 @@ UPDATE roadlinks SET geom2d = ST_Force2d(geom);
 CREATE INDEX roadlinks_geom2d_idx ON public.roadlinks USING gist (geom2d);
 CLUSTER public.roadlinks using roadlinks_geom_idx;
 
-CREATE TABLE splitroads AS
-SELECT stop_id, road_id, ST_CollectionExtract(ST_Split(road_geom, ST_ClosestPoint(road_geom, stop_geom)), 2) AS geom
-  FROM (
-    -- 
-    SELECT DISTINCT ON (p.gid)
-	  	   p.gid AS stop_id,
-		   p.atcocode AS atcocode,
-		   r.gid AS road_id,
-		   ST_Distance(p.geom, r.geom2d) AS distance,
-		   p.geom AS stop_geom,
-		   r.geom2d AS road_geom
-	  FROM stops p
- LEFT JOIN roadlinks r ON ST_DWithin(p.geom, r.geom2d, 30)
-  ORDER BY stop_id, distance, road_id
-  ) AS foo
-WHERE road_id IS NOT NULL;
+DROP TABLE IF EXISTS tmproads;
+CREATE TABLE tmproads AS(
+SELECT
+    a.gid,
+    a.fictitious, 
+	a.identifier, 
+	a.class, 
+	a.roadnumber, 
+	a.name1, 
+	a.name1_lang, 
+	a.name2, 
+	a.name2_lang,
+	a.formofway,
+	a.__primary,
+	a.trunkroad,
+	(ST_Dump(ST_Split(ST_Snap(a.geom, b.geom, 0.00001), b.geom))).geom
+FROM 
+    roadlinks a
+JOIN 
+    candidatestops b 
+ON 
+    ST_DWithin(b.geom, a.geom, 30)
+);
 
-CREATE TABLE newnodes AS SELECT (geom).geom FROM (SELECT ST_DUMPPOINTS(geom) AS geom FROM splitroads) AS foo;
+DROP TABLE IF EXISTS newroadlinks;
+CREATE TABLE newroadlinks AS (
+	SELECT * FROM tmproads
 
-SELECT COUNT(*) FROM (
-    SELECT DISTINCT ON (p.gid)
-	  	   p.gid AS stop_id,
-		   p.atcocode AS atcocode,
-		   r.gid AS road_id,
-		   ST_Distance(p.geom, r.geom) AS distance,
-		   p.geom AS stop_geom,
-		   r.geom AS road_geom
-	  FROM stops p
- LEFT JOIN roadlinks r ON ST_DWithin(p.geom, r.geom, 30)
-  ORDER BY stop_id, distance, road_id) AS foo;
+	UNION ALL
+
+	SELECT
+		a.gid,
+		a.fictitious, 
+		a.identifier, 
+		a.class, 
+		a.roadnumber, 
+		a.name1, 
+		a.name1_lang, 
+		a.name2, 
+		a.name2_lang,
+		a.formofway,
+		a.__primary,
+		a.trunkroad,
+		a.geom
+	FROM roadlinks a
+	LEFT JOIN tmproads tr
+	ON a.gid = tr.gid
+	WHERE tr.gid IS NULL
+);
+
+DROP TABLE IF EXISTS newroadnodes;
+CREATE TABLE newroadnodes AS (
+    SELECT ST_StartPoint(geom) AS geom FROM newroadlinks
+	UNION
+	SELECT ST_EndPoint(geom) AS geom FROM newroadlinks
+);
+
+DROP TABLE tmproads;
+
+CREATE INDEX ON newroadlinks USING GIST(geom);
+CREATE INDEX ON newroadnodes USING GIST(geom);
+CLUSTER newroadnodes USING newroadnodes_geom_idx;
+CLUSTER newroadlinks USING newroadlinks_geom_idx;
