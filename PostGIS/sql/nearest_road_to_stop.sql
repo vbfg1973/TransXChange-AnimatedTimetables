@@ -79,3 +79,8 @@ ALTER TABLE newroadlinks ADD COLUMN end_id INTEGER;
 UPDATE newroadlinks AS a SET start_id = b.id FROM newroadnodes AS b WHERE ST_StartPoint(a.geom) = b.geom;
 UPDATE newroadlinks AS a SET end_id = b.id FROM newroadnodes AS b WHERE ST_EndPoint(a.geom) = b.geom;
 
+-- This is also shit but closer to what I want
+SELECT DISTINCT ON (p.id) p.id
+	  FROM newroadnodes p
+ LEFT JOIN newroadlinks r ON ST_DWithin(p.geom, ST_StartPoint(r.geom), 30)
+  ORDER BY p.id, ST_Distance(p.geom, ST_StartPoint(r.geom))
