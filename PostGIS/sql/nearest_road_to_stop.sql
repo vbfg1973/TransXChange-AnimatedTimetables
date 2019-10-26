@@ -66,3 +66,15 @@ CREATE INDEX ON newroadlinks USING GIST(geom);
 CREATE INDEX ON newroadnodes USING GIST(geom);
 CLUSTER newroadnodes USING newroadnodes_geom_idx;
 CLUSTER newroadlinks USING newroadlinks_geom_idx;
+
+CREATE SEQUENCE IF NOT EXISTS number_sequence;
+alter table newroadnodes ADD COLUMN id INTEGER;
+UPDATE newroadnodes SET id =  nextval('number_sequence');
+CREATE INDEX ON newroadnodes USING BTREE(id);
+
+ALTER TABLE newroadlinks ADD COLUMN start_id INTEGER;
+ALTER TABLE newroadlinks ADD COLUMN end_id INTEGER;
+
+UPDATE newroadlinks AS a SET start_id = b.id FROM newroadnodes AS b WHERE ST_StartPoint(a.geom) = b.geom;
+UPDATE newroadlinks AS a SET end_id = b.id FROM newroadnodes AS b WHERE ST_EndPoint(a.geom) = b.geom;
+
