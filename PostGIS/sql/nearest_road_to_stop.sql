@@ -1,4 +1,4 @@
-SELECT AddGeometryColumn('public', 'roadlinks', 'geom2d', 27700, LINESTRING, 2);
+SELECT AddGeometryColumn('public', 'roadlinks', 'geom2d', 27700, 'LINESTRING', 2);
 UPDATE roadlinks SET geom2d = ST_Force2d(geom);
 CREATE INDEX roadlinks_geom2d_idx ON public.roadlinks USING gist (geom2d);
 CLUSTER public.roadlinks using roadlinks_geom_idx;
