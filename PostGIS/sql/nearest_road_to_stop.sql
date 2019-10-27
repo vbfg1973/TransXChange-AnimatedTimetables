@@ -85,14 +85,38 @@ UPDATE newroadlinks SET id =  nextval('newroadlinks_sequence');
 CREATE INDEX ON newroadlinks USING BTREE(id);
 
 -- Road startpoint and endpoint columns
-ALTER TABLE newroadlinks ADD COLUMN start_id INTEGER;
-ALTER TABLE newroadlinks ADD COLUMN end_id INTEGER;
 SELECT AddGeometryColumn('public', 'newroadlinks', 'startpoint', 27700, 'POINT', 2);
 SELECT AddGeometryColumn('public', 'newroadlinks', 'endpoint', 27700, 'POINT', 2);
 UPDATE newroadlinks SET startpoint = ST_Force2d(ST_StartPoint(geom));
 UPDATE newroadlinks SET endpoint = ST_Force2d(ST_EndPoint(geom));
 CREATE INDEX ON newroadlinks USING gist (startpoint);
 CREATE INDEX ON newroadlinks USING gist (endpoint);
+
+ALTER TABLE newroadlinks ADD COLUMN source INTEGER;
+ALTER TABLE newroadlinks ADD COLUMN target INTEGER;  
+ALTER TABLE newroadlinks ADD COLUMN cost DOUBLE PRECISION;
+ALTER TABLE newroadlinks ADD COLUMN reverse_cost DOUBLE PRECISION;
+ALTER TABLE newroadlinks ADD COLUMN id INTEGER;
+
+UPDATE newroadlinks SET id = gid;
+UPDATE newroadlinks SET cost = 1;
+UPDATE newroadlinks SET reverse_cost = 1;
+
+UPDATE newroadlinks AS nrl SET source = sq.node_id FROM (
+SELECT DISTINCT ON (r.gid) r.gid AS road_id, p.id AS node_id, ST_Distance(r.startpoint, p.geom) AS distance
+	  FROM newroadlinks r
+ LEFT JOIN newroadnodes p ON ST_DWithin(r.startpoint, p.geom, 30)
+  ORDER BY r.gid, distance ASC
+  ) AS sq
+  WHERE nrl.gid = sq.road_id;
+
+UPDATE newroadlinks AS nrl SET target = sq.node_id FROM (
+SELECT DISTINCT ON (r.gid) r.gid AS road_id, p.id AS node_id, ST_Distance(r.endpoint, p.geom) AS distance
+	  FROM newroadlinks r
+ LEFT JOIN newroadnodes p ON ST_DWithin(r.endpoint, p.geom, 30)
+  ORDER BY r.gid, distance ASC
+  ) AS sq
+  WHERE nrl.gid = sq.road_id;
 
 -- Store atcocode against the node
 ALTER TABLE newroadnodes ADD COLUMN atcocode VARCHAR(20);
@@ -104,15 +128,4 @@ SELECT DISTINCT ON (s.atcocode) s.atcocode AS atcocode, p.id AS node_id, ST_Dist
   ORDER BY s.atcocode, distance ASC) AS ac
   WHERE nrn.id = ac.node_id;
 CREATE INDEX ON newroadnodes USING BTREE(atcocode);
-
--- This is also shit but closer to what I want
---UPDATE newroadlinks AS nrl SET nrl.start_id = sq.node_id FROM (
-SELECT DISTINCT ON (r.gid) p.id AS node_id, r.gid AS road_id, ST_Distance(r.startpoint, p.geom) AS distance
-	  FROM newroadlinks r
- LEFT JOIN newroadnodes p ON ST_DWithin(r.startpoint, p.geom, 30)
-  ORDER BY r.gid, distance ASC
-  LIMIT 100;
-  --) AS sq
-  --WHERE nrl.id = sq.road_id
-  
   
