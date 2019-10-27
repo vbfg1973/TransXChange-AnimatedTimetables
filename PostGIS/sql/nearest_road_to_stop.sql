@@ -96,12 +96,11 @@ ALTER TABLE newroadlinks ADD COLUMN source INTEGER;
 ALTER TABLE newroadlinks ADD COLUMN target INTEGER;  
 ALTER TABLE newroadlinks ADD COLUMN cost DOUBLE PRECISION;
 ALTER TABLE newroadlinks ADD COLUMN reverse_cost DOUBLE PRECISION;
-ALTER TABLE newroadlinks ADD COLUMN id INTEGER;
 
 UPDATE newroadlinks SET id = gid;
 UPDATE newroadlinks SET cost = 1;
 UPDATE newroadlinks SET reverse_cost = 1;
-
+	   
 UPDATE newroadlinks AS nrl SET source = sq.node_id FROM (
 SELECT DISTINCT ON (r.gid) r.gid AS road_id, p.id AS node_id, ST_Distance(r.startpoint, p.geom) AS distance
 	  FROM newroadlinks r
@@ -118,6 +117,11 @@ SELECT DISTINCT ON (r.gid) r.gid AS road_id, p.id AS node_id, ST_Distance(r.endp
   ) AS sq
   WHERE nrl.gid = sq.road_id;
 
+ALTER TABLE candidatestops ADD COLUMN atcocode VARCHAR(20);
+UPDATE candidatestops AS cs SET atcocode = s.atcocode
+FROM stops AS s
+WHERE s.id = cs.stop_id;
+
 -- Store atcocode against the node
 ALTER TABLE newroadnodes ADD COLUMN atcocode VARCHAR(20);
 UPDATE newroadnodes AS nrn SET atcocode = ac.atcocode 
@@ -128,3 +132,12 @@ SELECT DISTINCT ON (s.atcocode) s.atcocode AS atcocode, p.id AS node_id, ST_Dist
   ORDER BY s.atcocode, distance ASC) AS ac
   WHERE nrn.id = ac.node_id;
 CREATE INDEX ON newroadnodes USING BTREE(atcocode);
+
+
+SELECT X.* FROM pgr_dijkstra(
+                'SELECT id, source, target, cost FROM newroadlinks',
+                (SELECT id FROM newroadnodes WHERE atcocode = '450010887'),
+				(SELECT id FROM newroadnodes WHERE atcocode = '450023831'),
+				false
+		) AS X
+		ORDER BY seq;
