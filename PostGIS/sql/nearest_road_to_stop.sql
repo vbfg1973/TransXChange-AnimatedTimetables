@@ -100,7 +100,12 @@ ALTER TABLE newroadlinks ADD COLUMN reverse_cost DOUBLE PRECISION;
 UPDATE newroadlinks SET id = gid;
 UPDATE newroadlinks SET cost = 1;
 UPDATE newroadlinks SET reverse_cost = 1;
-	   
+
+
+UPDATE roadlinks SET geom2d = ST_Force2d(geom);
+SELECT pgr_nodeNetwork('newroadlinks', 0.001, 'id', 'geom2d');
+
+
 UPDATE newroadlinks AS nrl SET source = sq.node_id FROM (
 SELECT DISTINCT ON (r.gid) r.gid AS road_id, p.id AS node_id, ST_Distance(r.startpoint, p.geom) AS distance
 	  FROM newroadlinks r
