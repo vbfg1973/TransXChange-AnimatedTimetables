@@ -128,4 +128,3 @@ SELECT DISTINCT ON (s.atcocode) s.atcocode AS atcocode, p.id AS node_id, ST_Dist
   ORDER BY s.atcocode, distance ASC) AS ac
   WHERE nrn.id = ac.node_id;
 CREATE INDEX ON newroadnodes USING BTREE(atcocode);
-  
