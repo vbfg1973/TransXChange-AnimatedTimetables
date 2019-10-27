@@ -74,13 +74,13 @@ CLUSTER newroadlinks USING newroadlinks_geom_idx;
 
 DROP SEQUENCE IF EXISTS newroadnodes_sequence;
 CREATE SEQUENCE IF NOT EXISTS newroadnodes_sequence;
-alter table newroadnodes ADD COLUMN id INTEGER;
+ALTER TABLE newroadnodes ADD COLUMN id INTEGER;
 UPDATE newroadnodes SET id =  nextval('newroadnodes_sequence');
 CREATE INDEX ON newroadnodes USING BTREE(id);
 
 DROP SEQUENCE IF EXISTS newroadlinks_sequence;
 CREATE SEQUENCE IF NOT EXISTS newroadlinks_sequence;
-alter table newroadlinks ADD COLUMN id INTEGER;
+ALTER TABLE newroadlinks ADD COLUMN id INTEGER;
 UPDATE newroadlinks SET id =  nextval('newroadlinks_sequence');
 CREATE INDEX ON newroadlinks USING BTREE(id);
 
