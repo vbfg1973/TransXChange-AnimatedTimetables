@@ -24,7 +24,7 @@ cur.close()
 interval = 20000
 for x in range(min_id, max_id+1, interval):
     cur = conn.cursor()
-    cur.execute("select pgr_createTopology('newroadlinks', 0.000001, 'geom', 'gid', rows_where:='gid>={x} and gid<{x+interval}');"
+    cur.execute("select pgr_createTopology('newroadlinks', 0.0001, 'geom', 'gid', rows_where:='gid>={x} and gid<{x+interval}');"
 )
     conn.commit()
     x_max = x + interval - 1
