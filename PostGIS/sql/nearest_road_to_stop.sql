@@ -42,8 +42,8 @@ ON
 );
 
 -- Merge with roads not split into new roads table
-DROP TABLE IF EXISTS newroadlinks;
-CREATE TABLE newroadlinks AS (
+DROP TABLE IF EXISTS roads;
+CREATE TABLE roads AS (
 	SELECT * FROM tmproads
 
 	UNION ALL
@@ -75,89 +75,28 @@ CREATE TABLE newroadlinks AS (
 ---- Generate nodes from new roads table
 --DROP TABLE IF EXISTS newroadnodes;
 --CREATE TABLE newroadnodes AS (
---   SELECT gid AS road_id, ST_StartPoint(geom) AS geom FROM newroadlinks
+--   SELECT gid AS road_id, ST_StartPoint(geom) AS geom FROM roads
 --	UNION
---	SELECT gid AS road_id, ST_EndPoint(geom) AS geom FROM newroadlinks
+--	SELECT gid AS road_id, ST_EndPoint(geom) AS geom FROM roads
 --);
 --ALTER TABLE newroadnodes ADD COLUMN gid INTEGER;
 --
 ---- tidy up, index and cluster
 DROP TABLE tmproads;
-CREATE INDEX ON newroadlinks USING GIST(geom);
+CREATE INDEX ON roads USING GIST(geom);
 --CREATE INDEX ON newroadnodes USING GIST(geom);
 --CLUSTER newroadnodes USING newroadnodes_geom_idx;
-CLUSTER newroadlinks USING newroadlinks_geom_idx;
+CLUSTER roads USING roads_geom_idx;
 
-DROP SEQUENCE IF EXISTS newroadlinks_sequence;
-CREATE SEQUENCE IF NOT EXISTS newroadlinks_sequence;
-UPDATE newroadlinks SET gid =  nextval('newroadlinks_sequence');
-CREATE INDEX ON newroadlinks USING BTREE(gid);
+DROP SEQUENCE IF EXISTS roads_sequence;
+CREATE SEQUENCE IF NOT EXISTS roads_sequence;
+UPDATE roads SET gid =  nextval('roads_sequence');
+CREATE INDEX ON roads USING BTREE(gid);
 --
 --DROP SEQUENCE IF EXISTS newroadnodes_sequence;
 --CREATE SEQUENCE IF NOT EXISTS newroadnodes_sequence;
 --UPDATE newroadnodes SET gid =  nextval('newroadnodes_sequence');
 --CREATE INDEX ON newroadnodes USING BTREE(id);
 
-ALTER TABLE newroadlinks ADD COLUMN "source" integer;
-ALTER TABLE newroadlinks ADD COLUMN "target" integer;
-SELECT pgr_createTopology('newroadlinks', 0.00001, 'geom', 'gid');
-
----- Road startpoint and endpoint columns
---SELECT AddGeometryColumn('public', 'newroadlinks', 'startpoint', 27700, 'POINT', 2);
---SELECT AddGeometryColumn('public', 'newroadlinks', 'endpoint', 27700, 'POINT', 2);
---UPDATE newroadlinks SET startpoint = ST_Force2d(ST_StartPoint(geom));
---UPDATE newroadlinks SET endpoint = ST_Force2d(ST_EndPoint(geom));
---CREATE INDEX ON newroadlinks USING gist (startpoint);
---CREATE INDEX ON newroadlinks USING gist (endpoint);
---
---ALTER TABLE newroadlinks ADD COLUMN source INTEGER;
---ALTER TABLE newroadlinks ADD COLUMN target INTEGER;  
---ALTER TABLE newroadlinks ADD COLUMN cost DOUBLE PRECISION;
---ALTER TABLE newroadlinks ADD COLUMN reverse_cost DOUBLE PRECISION;
---
---UPDATE newroadlinks SET id = gid;
---UPDATE newroadlinks SET cost = 1;
---UPDATE newroadlinks SET reverse_cost = 1;
---
---
---UPDATE roadlinks SET geom2d = ST_Force2d(geom);
---SELECT pgr_nodeNetwork('newroadlinks', 0.001, 'id', 'geom2d');
---
---
---UPDATE newroadlinks AS nrl SET source = sq.node_id FROM (
---SELECT DISTINCT ON (r.gid) r.gid AS road_id, p.id AS node_id, ST_Distance(r.startpoint, p.geom) AS distance
---	  FROM newroadlinks r
--- LEFT JOIN newroadnodes p ON ST_DWithin(r.startpoint, p.geom, 30)
---  ORDER BY r.gid, distance ASC
---  ) AS sq
---  WHERE nrl.gid = sq.road_id;
---
---UPDATE newroadlinks AS nrl SET target = sq.node_id FROM (
---SELECT DISTINCT ON (r.gid) r.gid AS road_id, p.id AS node_id, ST_Distance(r.endpoint, p.geom) AS distance
---	  FROM newroadlinks r
--- LEFT JOIN newroadnodes p ON ST_DWithin(r.endpoint, p.geom, 30)
---  ORDER BY r.gid, distance ASC
---  ) AS sq
---  WHERE nrl.gid = sq.road_id;
---
---
----- Store atcocode against the node
---ALTER TABLE newroadnodes ADD COLUMN atcocode VARCHAR(20);
---UPDATE newroadnodes AS nrn SET atcocode = ac.atcocode 
---FROM (
---SELECT DISTINCT ON (s.atcocode) s.atcocode AS atcocode, p.id AS node_id, ST_Distance(s.geom, p.geom) AS distance
---	  FROM candidatestops s
--- LEFT JOIN newroadnodes p ON ST_DWithin(s.geom, p.geom, 30)
---  ORDER BY s.atcocode, distance ASC) AS ac
---  WHERE nrn.id = ac.node_id;
---CREATE INDEX ON newroadnodes USING BTREE(atcocode);
---
---
---SELECT X.* FROM pgr_dijkstra(
---                'SELECT id, source, target, cost FROM newroadlinks',
---                (SELECT id FROM newroadnodes WHERE atcocode = '450010887'),
---				(SELECT id FROM newroadnodes WHERE atcocode = '450023831'),
---				false
---		) AS X
---		ORDER BY seq;
---
+ALTER TABLE roads ADD COLUMN "source" integer;
+ALTER TABLE roads ADD COLUMN "target" integer;
