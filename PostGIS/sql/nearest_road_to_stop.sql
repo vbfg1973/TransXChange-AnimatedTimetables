@@ -1,3 +1,10 @@
+CREATE EXTENSION postgis_topology;
+SET search_path = topology,public;
+
+ALTER TABLE candidatestops ADD COLUMN atcocode VARCHAR(20);
+UPDATE candidatestops AS cs SET atcocode = s.atcocode
+FROM stops AS s
+WHERE s.id = cs.stop_id;
 
 -- Force a 2d road geometry and index
 SELECT AddGeometryColumn('public', 'roadlinks', 'geom2d', 27700, 'LINESTRING', 2);
@@ -18,10 +25,13 @@ SELECT
 	a.name1_lang, 
 	a.name2, 
 	a.name2_lang,
+	a.startnode,
+	a.endnode,
 	a.formofway,
 	a.__primary,
 	a.trunkroad,
 	(ST_Dump(ST_Split(ST_Snap(a.geom2d, b.geom, 0.00001), b.geom))).geom,
+	b.atcocode,
 	true AS split
 FROM 
     roadlinks a
@@ -48,10 +58,13 @@ CREATE TABLE newroadlinks AS (
 		a.name1_lang, 
 		a.name2, 
 		a.name2_lang,
+		a.startnode,
+		a.endnode,
 		a.formofway,
 		a.__primary,
 		a.trunkroad,
-		a.geom2d,
+		a.geom2d AS geom,
+		null,
 		false AS split
 	FROM roadlinks a
 	LEFT JOIN tmproads tr
@@ -62,30 +75,33 @@ CREATE TABLE newroadlinks AS (
 ---- Generate nodes from new roads table
 --DROP TABLE IF EXISTS newroadnodes;
 --CREATE TABLE newroadnodes AS (
---    SELECT ST_StartPoint(geom) AS geom FROM newroadlinks
+--   SELECT gid AS road_id, ST_StartPoint(geom) AS geom FROM newroadlinks
 --	UNION
---	SELECT ST_EndPoint(geom) AS geom FROM newroadlinks
+--	SELECT gid AS road_id, ST_EndPoint(geom) AS geom FROM newroadlinks
 --);
+--ALTER TABLE newroadnodes ADD COLUMN gid INTEGER;
 --
 ---- tidy up, index and cluster
---DROP TABLE tmproads;
---CREATE INDEX ON newroadlinks USING GIST(geom);
+DROP TABLE tmproads;
+CREATE INDEX ON newroadlinks USING GIST(geom);
 --CREATE INDEX ON newroadnodes USING GIST(geom);
 --CLUSTER newroadnodes USING newroadnodes_geom_idx;
---CLUSTER newroadlinks USING newroadlinks_geom_idx;
+CLUSTER newroadlinks USING newroadlinks_geom_idx;
+
+DROP SEQUENCE IF EXISTS newroadlinks_sequence;
+CREATE SEQUENCE IF NOT EXISTS newroadlinks_sequence;
+UPDATE newroadlinks SET gid =  nextval('newroadlinks_sequence');
+CREATE INDEX ON newroadlinks USING BTREE(gid);
 --
 --DROP SEQUENCE IF EXISTS newroadnodes_sequence;
 --CREATE SEQUENCE IF NOT EXISTS newroadnodes_sequence;
---ALTER TABLE newroadnodes ADD COLUMN id INTEGER;
---UPDATE newroadnodes SET id =  nextval('newroadnodes_sequence');
+--UPDATE newroadnodes SET gid =  nextval('newroadnodes_sequence');
 --CREATE INDEX ON newroadnodes USING BTREE(id);
---
---DROP SEQUENCE IF EXISTS newroadlinks_sequence;
---CREATE SEQUENCE IF NOT EXISTS newroadlinks_sequence;
---ALTER TABLE newroadlinks ADD COLUMN id INTEGER;
---UPDATE newroadlinks SET id =  nextval('newroadlinks_sequence');
---CREATE INDEX ON newroadlinks USING BTREE(id);
---
+
+ALTER TABLE newroadlinks ADD COLUMN "source" integer;
+ALTER TABLE newroadlinks ADD COLUMN "target" integer;
+SELECT pgr_createTopology('newroadlinks', 0.00001, 'geom', 'gid');
+
 ---- Road startpoint and endpoint columns
 --SELECT AddGeometryColumn('public', 'newroadlinks', 'startpoint', 27700, 'POINT', 2);
 --SELECT AddGeometryColumn('public', 'newroadlinks', 'endpoint', 27700, 'POINT', 2);
@@ -124,10 +140,6 @@ CREATE TABLE newroadlinks AS (
 --  ) AS sq
 --  WHERE nrl.gid = sq.road_id;
 --
---ALTER TABLE candidatestops ADD COLUMN atcocode VARCHAR(20);
---UPDATE candidatestops AS cs SET atcocode = s.atcocode
---FROM stops AS s
---WHERE s.id = cs.stop_id;
 --
 ---- Store atcocode against the node
 --ALTER TABLE newroadnodes ADD COLUMN atcocode VARCHAR(20);
