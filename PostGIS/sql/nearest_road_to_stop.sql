@@ -101,6 +101,7 @@ UPDATE topology.roads SET speed_mph =
 	END;
 
 UPDATE topology.roads SET length = ST_Length(geom);
+UPDATE topology.roads SET cost_time = (length/1000.0/(speed_mph*1.609344))*60::numeric;
 
 DROP TABLE tmproads;
 CREATE INDEX ON roads USING GIST(geom);
@@ -347,9 +348,6 @@ select pgr_createTopology('topology.roads', 0.0001, 'geom', 'gid', rows_where:='
 select pgr_createTopology('topology.roads', 0.0001, 'geom', 'gid', rows_where:='gid>=4460001 and gid<4480001');
 select pgr_createTopology('topology.roads', 0.0001, 'geom', 'gid', rows_where:='gid>=4480001 and gid<4500001');
 select pgr_createTopology('topology.roads', 0.0001, 'geom', 'gid', rows_where:='gid>=4500001 and gid<4520001');
-
-UPDATE topology.roads SET
-	cost_time = (length/1000.0/(speed_mph*1.609344))*60::numeric;
 
 ALTER TABLE topology.roads_vertices_pgr ADD COLUMN atcocode VARCHAR(15);
 UPDATE topology.roads_vertices_pgr as v
