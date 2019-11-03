@@ -357,11 +357,10 @@ SELECT DISTINCT ON (ro.id) ro.id, fromstop.id AS from_id, fromstop.atcocode AS f
  WHERE fromstop.atcocode = ro.fromcode 
    AND tostop.atcocode = ro.tocode;
  
-DROP TABLE IF EXISTS routes;
-CREATE TABLE routes AS SELECT rou.* 
+DROP TABLE IF EXISTS busroutesroad;
+CREATE TABLE busroutesroad AS SELECT rou.* 
   FROM pgr_dijkstra(
 			'SELECT gid AS id, source, target, 1 AS cost FROM topology.roads',
-			ARRAY(SELECT from_id FROM fromto WHERE fromcode LIKE '4500%' ORDER BY from_id),
-			ARRAY(SELECT to_id FROM fromto WHERE tocode LIKE '4500%' ORDER BY from_id),
+			ARRAY(SELECT from_id FROM fromto WHERE fromcode LIKE '4500%' ORDER BY id LIMIT 2000),
+			ARRAY(SELECT to_id FROM fromto WHERE fromcode LIKE '4500%' ORDER BY id LIMIT 2000),
 			false) AS rou;
-
