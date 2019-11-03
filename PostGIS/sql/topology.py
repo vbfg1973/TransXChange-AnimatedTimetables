@@ -16,7 +16,7 @@ conn = psycopg2.connect(
 cur = conn.cursor()
 print("connected to database")
 
-cur.execute("SELECT MIN(gid), MAX(gid) FROM newroadlinks;")
+cur.execute("SELECT MIN(gid), MAX(gid) FROM topology.roads;")
 min_id, max_id = cur.fetchone()
 print(f"there are {max_id - min_id + 1} edges to be processed")
 cur.close()
@@ -24,12 +24,12 @@ cur.close()
 interval = 20000
 for x in range(min_id, max_id+1, interval):
     cur = conn.cursor()
-    cur.execute("select pgr_createTopology('newroadlinks', 0.0001, 'geom', 'gid', rows_where:='gid>={x} and gid<{x+interval}');"
-)
-    conn.commit()
-    x_max = x + interval - 1
-    if x_max > max_id:
-        x_max = max_id
-    print(f"edges {x} - {x_max} have been processed")
+    print(f"select pgr_createTopology('topology.roads', 0.0001, 'geom', 'gid', rows_where:='gid>={x} and gid<{x+interval}');")
+    #cur.execute("select pgr_createTopology('topology.roads', 0.0001, 'geom', 'gid', rows_where:='gid>={x} and gid<{x+interval}');")
+    #conn.commit()
+    #x_max = x + interval - 1
+    #if x_max > max_id:
+    #    x_max = max_id
+    #print(f"edges {x} - {x_max} have been processed")
 
 cur = conn.cursor()
