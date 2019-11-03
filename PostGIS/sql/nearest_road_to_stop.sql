@@ -72,16 +72,36 @@ CREATE TABLE roads AS (
 	WHERE tr.gid IS NULL
 );
 
----- Generate nodes from new roads table
---DROP TABLE IF EXISTS newroadnodes;
---CREATE TABLE newroadnodes AS (
---   SELECT gid AS road_id, ST_StartPoint(geom) AS geom FROM roads
---	UNION
---	SELECT gid AS road_id, ST_EndPoint(geom) AS geom FROM roads
---);
---ALTER TABLE newroadnodes ADD COLUMN gid INTEGER;
---
----- tidy up, index and cluster
+ALTER TABLE topology.roads
+	ADD COLUMN length DOUBLE PRECISION,
+    ADD COLUMN speed_mph INTEGER,
+    ADD COLUMN cost_time DOUBLE PRECISION;
+
+UPDATE topology.roads SET speed_mph =
+    CASE
+	WHEN class = 'A Road' AND formofway = 'Single Carriageway' THEN 45
+	WHEN class = 'A Road' AND formofway = 'Dual Carriageway' THEN 50
+	WHEN class = 'A Road' AND formofway = 'Collapsed Dual Carriageway' THEN 50
+	WHEN class = 'A Road' AND formofway = 'Slip Road' THEN 40
+	WHEN class = 'B Road' AND formofway = 'Single Carriageway' THEN 40
+	WHEN class = 'B Road' AND formofway = 'Dual Carriageway' THEN 45
+	WHEN class = 'B Road' AND formofway = 'Collapsed Dual Carriageway' THEN 45
+	WHEN class = 'B Road' AND formofway = 'Slip Road' THEN 30
+	WHEN class = 'Motorway' AND formofway = 'Single Carriageway' THEN 65
+	WHEN class = 'Motorway' AND formofway = 'Dual Carriageway' THEN 65
+	WHEN class = 'Motorway' AND formofway = 'Collapsed Dual Carriageway' THEN 65
+	WHEN class = 'Motorway' AND formofway = 'Slip Road' THEN 50
+	WHEN class = 'Minor Road' AND formofway != 'Roundabout' THEN 30
+	WHEN class = 'Local Road' AND formofway != 'Roundabout' THEN 25
+	WHEN class = 'Local Access Road' AND formofway != 'Roundabout' THEN 20
+	WHEN class = 'Restricted Local Access Road' AND formofway != 'Roundabout' THEN 20
+	WHEN class = 'Secondary Access Road' AND formofway != 'Roundabout' THEN 15
+	WHEN formofway = 'Roundabout' THEN 10
+	ELSE 1
+	END;
+
+UPDATE topology.roads SET length = ST_Length(geom);
+
 DROP TABLE tmproads;
 CREATE INDEX ON roads USING GIST(geom);
 --CREATE INDEX ON newroadnodes USING GIST(geom);
@@ -328,6 +348,9 @@ select pgr_createTopology('topology.roads', 0.0001, 'geom', 'gid', rows_where:='
 select pgr_createTopology('topology.roads', 0.0001, 'geom', 'gid', rows_where:='gid>=4480001 and gid<4500001');
 select pgr_createTopology('topology.roads', 0.0001, 'geom', 'gid', rows_where:='gid>=4500001 and gid<4520001');
 
+UPDATE topology.roads SET
+	cost_time = (length/1000.0/(speed_mph*1.609344))*60::numeric;
+
 ALTER TABLE topology.roads_vertices_pgr ADD COLUMN atcocode VARCHAR(15);
 UPDATE topology.roads_vertices_pgr as v
 SET atcocode = res.atcocode
@@ -360,7 +383,19 @@ SELECT DISTINCT ON (ro.id) ro.id, fromstop.id AS from_id, fromstop.atcocode AS f
 DROP TABLE IF EXISTS busroutesroad;
 CREATE TABLE busroutesroad AS SELECT rou.* 
   FROM pgr_dijkstra(
-			'SELECT gid AS id, source, target, 1 AS cost FROM topology.roads',
-			ARRAY(SELECT from_id FROM fromto WHERE fromcode LIKE '4500%' ORDER BY id LIMIT 2000),
-			ARRAY(SELECT to_id FROM fromto WHERE fromcode LIKE '4500%' ORDER BY id LIMIT 2000),
+			'SELECT gid AS id, source, target, cost_time AS cost FROM topology.roads',
+			ARRAY(SELECT from_id AS id FROM fromto WHERE fromto.fromcode LIKE '45001%' ORDER BY id LIMIT 20),
+			ARRAY(SELECT to_id   AS id FROM fromto WHERE fromto.fromcode LIKE '45001%' ORDER BY id LIMIT 20),
 			false) AS rou;
+
+DROP VIEW IF EXISTS roadroutes;
+CREATE TABLE roadroutes AS 
+SELECT r.gid AS gid, ststr.atcocode as fromcode, stend.atcocode as tocode, brr.seq, brr.edge, r.geom
+FROM busroutesroad AS brr,
+     roads_vertices_pgr AS ststr,
+	 roads_vertices_pgr AS stend,
+	 roads AS r
+WHERE brr.start_vid = ststr.id
+  AND brr.end_vid = stend.id
+  AND brr.edge = r.gid;
+
