@@ -75,7 +75,8 @@ CREATE TABLE roads AS (
 ALTER TABLE topology.roads
 	ADD COLUMN length DOUBLE PRECISION,
     ADD COLUMN speed_mph INTEGER,
-    ADD COLUMN cost_time DOUBLE PRECISION;
+    ADD COLUMN cost_time DOUBLE PRECISION
+	ADD COLUMN rcost_time DOUBLE PRECISION;
 
 UPDATE topology.roads SET speed_mph =
     CASE
@@ -102,6 +103,7 @@ UPDATE topology.roads SET speed_mph =
 
 UPDATE topology.roads SET length = ST_Length(geom);
 UPDATE topology.roads SET cost_time = (length/1000.0/(speed_mph*1.609344))*60::numeric;
+UPDATE topology.roads SET rcost_time = (length/1000.0/(speed_mph*1.609344))*60::numeric;
 
 DROP TABLE tmproads;
 CREATE INDEX ON roads USING GIST(geom);
@@ -382,11 +384,11 @@ DROP TABLE IF EXISTS busroutesroad;
 CREATE TABLE busroutesroad AS SELECT rou.* 
   FROM pgr_dijkstra(
 			'SELECT gid AS id, source, target, cost_time AS cost FROM topology.roads',
-			ARRAY(SELECT from_id AS id FROM fromto WHERE fromto.fromcode LIKE '45001%' ORDER BY id LIMIT 20),
-			ARRAY(SELECT to_id   AS id FROM fromto WHERE fromto.fromcode LIKE '45001%' ORDER BY id LIMIT 20),
+			ARRAY(SELECT from_id AS id FROM fromto WHERE fromto.fromcode LIKE '45001%' ORDER BY id LIMIT 1000),
+			ARRAY(SELECT to_id   AS id FROM fromto WHERE fromto.fromcode LIKE '45001%' ORDER BY id LIMIT 1000),
 			false) AS rou;
 
-DROP VIEW IF EXISTS roadroutes;
+DROP TABLE IF EXISTS roadroutes;
 CREATE TABLE roadroutes AS 
 SELECT r.gid AS gid, ststr.atcocode as fromcode, stend.atcocode as tocode, brr.seq, brr.edge, r.geom
 FROM busroutesroad AS brr,
@@ -396,4 +398,7 @@ FROM busroutesroad AS brr,
 WHERE brr.start_vid = ststr.id
   AND brr.end_vid = stend.id
   AND brr.edge = r.gid;
+
+CREATE INDEX ON roadroutes USING GIST(geom);
+CLUSTER roadroutes USING roadroutes_geom_idx;
 
