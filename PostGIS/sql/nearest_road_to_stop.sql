@@ -343,16 +343,25 @@ FROM
 	ORDER BY b.atcocode, ST_Distance(a.the_geom, b.geom) ASC) AS res
 WHERE res.id = v.id;
 
+CREATE INDEX roads_geom_idx ON topology.roads USING gist (geom);
+CLUSTER topology.roads using roads_geom_idx;
+CREATE INDEX vertices_geom_idx ON topology.roads_vertices_pgr USING gist (the_geom);
+CLUSTER topology.roads_vertices_pgr using vertices_geom_idx;
 
+DROP VIEW IF EXISTS fromto;
+CREATE VIEW fromto AS
+SELECT DISTINCT ON (ro.id) ro.id, fromstop.id AS from_id, fromstop.atcocode AS fromcode, tostop.id AS to_id, tostop.atcocode AS tocode
+  FROM topology.roads_vertices_pgr AS fromstop, 
+       topology.roads_vertices_pgr AS tostop, 
+       routes AS ro 
+ WHERE fromstop.atcocode = ro.fromcode 
+   AND tostop.atcocode = ro.tocode;
+ 
 DROP TABLE IF EXISTS routes;
-CREATE TABLE routes AS SELECT r.gid, r.geom
-FROM roads AS r,
-	(SELECT X.* FROM pgr_dijkstra(
+CREATE TABLE routes AS SELECT rou.* 
+  FROM pgr_dijkstra(
 			'SELECT gid AS id, source, target, 1 AS cost FROM topology.roads',
-			(SELECT id FROM topology.roads_vertices_pgr WHERE atcocode = '450010895'),
-			(SELECT id FROM topology.roads_vertices_pgr WHERE atcocode = '450023831'),
-			false
-			) AS X
-			ORDER BY seq) as p
-WHERE r.gid = p.edge;
+			ARRAY(SELECT from_id FROM fromto WHERE fromcode LIKE '4500%' ORDER BY from_id),
+			ARRAY(SELECT to_id FROM fromto WHERE tocode LIKE '4500%' ORDER BY from_id),
+			false) AS rou;
 
