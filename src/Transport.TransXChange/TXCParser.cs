@@ -37,7 +37,7 @@ namespace Transport.TransXChange
             }
         }
 
-        private IEnumerable<JourneyLink> ParseXML()
+        public IEnumerable<JourneyLink> ParseXML()
         {
             XmlReaderSettings settings = new XmlReaderSettings();
             settings.ConformanceLevel = ConformanceLevel.Fragment;
